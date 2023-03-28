@@ -1,16 +1,17 @@
-FROM	debian:buster
 
-RUN		apt-get update -y; \
-		apt-get install nginx -y; \
-		mkdir -p /etc/nginx/ssl; \
-		apt-get install openssl -y; \
-		openssl req -x509 -nodes -out /etc/nginx/ssl/inception.crt -keyout /etc/nginx/ssl/inception.key -subj "/C=FR/ST=IDF/L=Paris/O=42/OU=42/CN=anremiki.42.fr/UID=anremiki";
-		mkdir -p /var/run/nginx
-		chmod 755 /var/www/html
-		chown -R www-data:www-data /var/www/html
+FROM debian:buster
 
-COPY	conf/nginx.conf /etc/nginx/nginx.conf
+RUN apt update && apt install -y nginx openssl
+RUN openssl req -x509 -nodes -newkey rsa:2048 -keyout /etc/ssl/private/private-key.pem -out /etc/ssl/certs/certificate.pem -days 365 -subj '/CN=FR/O=42/C=FR'
+# RUN mkdir -p /var/www/html/wordpress && chmod 777 /var/www/html/wordpress
 
-EXPOSE	443
+EXPOSE 443
 
-CMD	["nginx", "-g", "daemon off;"]
+# COPY ./conf/nginx.conf /etc/nginx/conf.d/ 
+COPY ./conf/default /etc/nginx/sites-enabled/
+#COPY ./conf/default /etc/nginx/sites-available/
+
+ENTRYPOINT ["nginx", "-g", "daemon off;"]
+
+
+
