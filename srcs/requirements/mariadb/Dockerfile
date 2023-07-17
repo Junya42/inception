@@ -1,18 +1,27 @@
+# use debian as the base image
 FROM debian:buster
-EXPOSE 3306
-RUN apt update && apt install mariadb-server mariadb-client -y
 
+# install MariaDB and other dependencies
+RUN apt-get update -y
+RUN apt-get upgrade -y
+RUN apt-get install -y mariadb-server
+RUN apt-get install -y mariadb-client
+RUN apt-get install -y procps
+
+
+# copy the provided config file to the container
 COPY ./conf/50-server.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
-COPY ./tools/mariadb_init.sh /usr/local/bin
-COPY ./conf/wordpress_db.sql /usr/local/bin
 
+RUN mkdir -p /var/run/mysqld
+RUN mkdir -p /var/lib/mysql
+RUN chown mysql:mysql /var/run/mysqld/
+RUN chmod -R 755 /var/run/mysqld/
+RUN chown mysql:mysql /var/lib/mysql/
+RUN chmod -R 755 /var/lib/mysql/
 
-RUN chmod +x /usr/local/bin/mariadb_init.sh
-RUN mkdir -p /var/run/mysql/ && \
-    rm -rf /var/lib/apt/lists/* &&\
-    chown -R mysql:mysql /var/run/mysql
+EXPOSE 3306
 
-ENTRYPOINT ["sh", "/usr/local/bin/mariadb_init.sh"]
+COPY ./dbscript.sh ./
+RUN chmod +x ./dbscript.sh
 
-#CMD ["mysqld", "--bind-address=0.0.0.0", "--log-error=/var/lib/mysql/error.log", "-u", "root", "-prootpass"]
-CMD ["mysqld"]
+ENTRYPOINT ["bash", "./dbscript.sh"]

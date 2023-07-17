@@ -1,64 +1,82 @@
 version: '3'
 
 services:
-  wordpress:
-      image: wordpress
-      restart: on-failure
-      container_name: wordpress
-      build: 
-        context: ./requirements/wordpress
-        dockerfile: Dockerfile
-      env_file:
-        - .env
-      volumes:
-        - wordpress-volume:/var/www/html/wordpress
-      networks:
-        - my_network
-      depends_on:
-        - mariadb
-  nginx:
-    depends_on:
-    - wordpress
-    image: nginx
-    container_name: nginx
-    build:  
-        context: ./requirements/nginx
-        dockerfile: Dockerfile
-    restart: unless-stopped
-    ports:
-      - 443:443
-    volumes:
-      - wordpress-volume:/var/www/html/wordpress
-    networks:
-      - my_network
-
   mariadb:
     image: mariadb
     container_name: mariadb
-    build: 
+    build:
       context: ./requirements/mariadb
       dockerfile: Dockerfile
     volumes:
-      - mariadb-volume:/var/lib/mysql
-    env_file:
-      - .env
+      - mariadb:/var/lib/mysql
+    expose:
+      - "3306"
     networks:
-      - my_network
+      - inception
+    restart: unless-stopped
+    env_file: .env
+    healthcheck:
+      test: mysqladmin ping --host=localhost -p${SQL_ROOT_PASSWORD}
+      interval: 5s
+      timeout: 1s
+      retries: 20
+      start_period: 5s
+
+  wordpress:
+    image: wordpress
+    container_name: wordpress
+    build:
+      context: ./requirements/wordpress
+      dockerfile: Dockerfile
+    volumes:
+      - wordpress:/var/www/html/wordpress
+    expose:
+      - "9000"
+    networks:
+      - inception
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      mariadb:
+        condition: service_healthy    
+
+  nginx:
+    image: nginx
+    container_name: nginx
+    build:
+      context: ./requirements/nginx
+      dockerfile: Dockerfile
+    volumes:
+      - wordpress:/var/www/html/wordpress
+    depends_on:
+      - wordpress
+    ports:
+      - "443:443"
+    networks:
+      - inception
+    restart: unless-stopped
+    env_file: .env
+    healthcheck:
+      test: 'curl -kfsSL https://localhost:443/status'
+      interval: 5s
+      timeout: 1s
+      retries: 10
+      start_period: 5s
 
 volumes:
-  wordpress-volume:
+  mariadb:
     driver: local
     driver_opts:
-      type: none
-      device: /home/junya/data/wordpress
-      o: bind
-  mariadb-volume:
+      type: 'none'
+      o: 'bind'
+      device: '/home/anremiki/data/mariadb'
+  wordpress:
     driver: local
     driver_opts:
-      type: none
-      device: /home/junya/data/mariadb
-      o: bind
+      type: 'none'
+      o: 'bind'
+      device: '/home/anremiki/data/wordpress'
 
 networks:
-  my_network:
-    driver: bridge
+  inception:
+    name: inception

@@ -1,17 +1,23 @@
-all:
-	mkdir -p /home/junya/data/wordpress
-	mkdir -p /home/junya/data/mariadb
-	sudo docker-compose -f ./srcs/docker-compose.yml  up -d --build
-stop:
-	sudo docker-compose -f ./srcs/docker-compose.yml down 
+all: 
+	mkdir -p /home/anremiki/data/mariadb
+	mkdir -p /home/anremiki/data/wordpress
+	docker compose -f ./srcs/docker-compose.yml build
+	docker compose -f ./srcs/docker-compose.yml up -d
 
-erase:
-	sudo rm -rf /home/junya/data/wordpress/*
-	sudo rm -rf /home/junya/data/mariadb/*
+logs:
+	docker logs wordpress
+	docker logs mariadb
+	docker logs nginx
 
+clean:
+	docker container stop nginx mariadb wordpress
+	docker network rm inception
 
-fclean: stop erase
-	sudo docker system prune -af
-	sudo docker volume rm -f $$(docker volume ls -q)
+fclean: clean
+	@sudo rm -rf /home/anremiki/data/mariadb/*
+	@sudo rm -rf /home/anremiki/data/wordpress/*
+	@docker system prune -af
 
-re: stop all
+re: fclean all
+
+.Phony: all logs clean fclean
